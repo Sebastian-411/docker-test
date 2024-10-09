@@ -29,10 +29,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Paso 4: Construir y enviar la imagen de Docker
+      # Paso 4: Configurar el nombre del actor en minúsculas
+      - name: Set actor name to lowercase
+        id: set_actor
+        run: echo "lowercase_actor=$(echo $GITHUB_ACTOR | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      # Paso 5: Construir y enviar la imagen de Docker
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ghcr.io/${{format('{0}', github.actor)}}/docker-test:latest
+          tags: ghcr.io/${{ env.lowercase_actor }}/docker-test:latest
