@@ -13,26 +13,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
+      # Paso 1: Checkout del repositorio
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Docker Buildx
+      # Paso 2: Configurar Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Step 3: Log in to GitHub Container Registry
+      # Paso 3: Iniciar sesión en GitHub Container Registry
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ secrets.GITHUB_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}  # Usa el nombre de usuario de GitHub del que ejecuta la acción
+          password: ${{ secrets.GITHUB_TOKEN }}  # Usa el token de acceso personal almacenado en los secretos
 
-      # Step 4: Build and push Docker image
+      # Paso 4: Construir y enviar la imagen de Docker
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ghcr.io/sebastian-411/docker-test:latest
+          tags: ghcr.io/sebastian-411/docker-test:latest  # Asegúrate de que el nombre del repositorio esté en minúsculas
