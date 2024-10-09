@@ -1,71 +1,129 @@
-# Getting Started with Create React App
+# Informe de Práctica: Dockerización y Configuración de Pipeline de la Aplicación de Rick and Morty
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-hi
+## Introducción
 
-## Available Scripts
+El objetivo de esta práctica fue dockerizar una aplicación de Rick and Morty y configurar un pipeline de CI/CD utilizando GitHub Actions. Este proceso permitió aprender sobre la creación de contenedores Docker y la automatización de despliegues, lo cual es fundamental en el desarrollo moderno de software.
 
-In the project directory, you can run:
+## Proceso de Dockerización
 
-### `npm start`
+### 1. Creación del Dockerfile
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Para iniciar el proceso de dockerización, se construyó un `Dockerfile` que permite crear una imagen de la aplicación. El `Dockerfile` contiene las instrucciones necesarias para:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Definir la imagen base**: Se eligió `node:18-alpine` como base para la construcción de la aplicación.
+- **Configurar el entorno de trabajo**: Se estableció el directorio de trabajo en `/app`.
+- **Instalar dependencias**: Se copió el archivo `package*.json` y se ejecutó `npm install` para instalar las dependencias necesarias.
+- **Construir la aplicación**: Se copiaron los archivos de la aplicación y se ejecutó `npm run build` para generar la versión de producción.
+- **Servir la aplicación**: Se utilizó `nginx:alpine` para servir los archivos construidos.
 
-### `npm test`
+El contenido del `Dockerfile` es el siguiente:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```dockerfile
+FROM node:18-alpine AS build
 
-### `npm run build`
+WORKDIR /app
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+COPY package*.json ./
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+RUN npm install
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+COPY . .
 
-### `npm run eject`
+RUN npm run build
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+FROM nginx:alpine
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+COPY --from=build /app/build /usr/share/nginx/html
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+EXPOSE 80
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+CMD ["nginx", "-g", "daemon off;"]
+```
 
-## Learn More
+### 2. Construcción de la Imagen Docker
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Luego de definir el `Dockerfile`, se procedió a construir la imagen de Docker utilizando el comando:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+docker build -t rick-and-morty-app .
+```
 
-### Code Splitting
+Esto generó una imagen que se puede ejecutar como un contenedor.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Configuración del Pipeline de CI/CD
 
-### Analyzing the Bundle Size
+### 1. Configuración Inicial
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Se configuró un pipeline utilizando GitHub Actions para automatizar el proceso de construcción y despliegue de la imagen Docker. Inicialmente, se intentó utilizar Docker Hub, pero se optó por GitHub Container Registry debido a una mejor integración con el repositorio.
 
-### Making a Progressive Web App
+### 2. Creación del Archivo de Configuración
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+El archivo de configuración del pipeline (`.github/workflows/docker.yml`) se diseñó para realizar los siguientes pasos:
 
-### Advanced Configuration
+- **Realizar el checkout del repositorio**: Obtener el código fuente del repositorio.
+- **Configurar Docker Buildx**: Preparar el entorno para construir imágenes Docker.
+- **Iniciar sesión en el GitHub Container Registry**: Autenticarse para poder subir imágenes.
+- **Construir y enviar la imagen de Docker**: Crear la imagen y enviarla al registro.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+El contenido del archivo de configuración es el siguiente:
 
-### Deployment
+```yaml
+name: Build and Push Docker Image
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-### `npm run build` fails to minify
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+    steps:
+      # Paso 1: Checkout del repositorio
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Paso 2: Configurar Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Paso 3: Iniciar sesión en GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Paso 4: Configurar el nombre del actor en minúsculas
+      - name: Set actor name to lowercase
+        id: set_actor
+        run: echo "lowercase_actor=$(echo $GITHUB_ACTOR | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      # Paso 5: Construir y enviar la imagen de Docker
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ env.lowercase_actor }}/docker-test:latest
+```
+#### ¿Qué es Docker Buildx?
+
+Docker Buildx es una extensión de Docker que permite construir imágenes de Docker de manera más eficiente y flexible. Proporciona soporte para la construcción multiplataforma, caché avanzado y comandos extensibles, lo que mejora el rendimiento y la flexibilidad del proceso de creación de imágenes. Su integración con GitHub Actions facilita la automatización del proceso de construcción y despliegue en pipelines de CI/CD.
+
+
+### 3. Resultados y Aprendizajes
+
+La implementación del pipeline permitió automatizar el proceso de construcción y despliegue de la aplicación. Aunque se enfrentaron algunos problemas iniciales al intentar utilizar Docker Hub, la decisión de migrar a GitHub Container Registry simplificó la integración.
+
+![image](https://github.com/user-attachments/assets/5788a5dd-ade9-456d-95bf-d77c8e9a4968)
+
+
+## Conclusiones
+
+La práctica de dockerización y configuración del pipeline para la aplicación de Rick and Morty fue exitosa. Este proceso no solo mejoró el conocimiento sobre Docker y CI/CD, sino que también demostró la importancia de la automatización en el desarrollo de software moderno.
