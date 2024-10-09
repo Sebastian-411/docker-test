@@ -30,4 +30,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/Sebastian-411/react-app:latest
+          tags: ghcr.io/sebastian-411/react-app:latest
