@@ -30,4 +30,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/USERNAME/react-app:latest  # Change USERNAME to your GitHub username or Docker Hub repo
+          tags: ghcr.io/Sebastian-411/react-app:latest
