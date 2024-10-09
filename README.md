@@ -40,15 +40,6 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
-### 2. Construcción de la Imagen Docker
-
-Luego de definir el `Dockerfile`, se procedió a construir la imagen de Docker utilizando el comando:
-
-```bash
-docker build -t rick-and-morty-app .
-```
-
-Esto generó una imagen que se puede ejecutar como un contenedor.
 
 ## Configuración del Pipeline de CI/CD
 
